@@ -1,4 +1,4 @@
-peer_list = ''
+peer_list = []
 volume_bricks = {}
 volume_options = {}
 volume_ports = {}
@@ -30,7 +30,7 @@ if binary
   peers = REXML::XPath.match(peer_status, '/cliOutput/peerStatus/peer/hostname/text()')
   peer_count = peers.size
   if peer_count > 0
-    peer_list = peers.join(',')
+    peer_list = peers
     volumes = REXML::Document.new(Facter::Util::Resolution.exec("#{binary} volume info --xml"))
     REXML::XPath.match(volumes, '/cliOutput/volInfo/volumes/volume').each do |vol|
       vol_name = vol.elements['name'].text
@@ -63,13 +63,13 @@ if binary
     unless volume_bricks.empty?
       Facter.add(:gluster_volume_list) do
         setcode do
-          volume_bricks.keys.join(',')
+          volume_bricks.keys
         end
       end
       volume_bricks.each do |vol, bricks|
         Facter.add("gluster_volume_#{vol}_bricks".to_sym) do
           setcode do
-            bricks.join(',')
+            bricks
           end
         end
       end
@@ -78,7 +78,7 @@ if binary
         volume_options.each do |vol, opts|
           Facter.add("gluster_volume_#{vol}_options".to_sym) do
             setcode do
-              opts.join(',')
+              opts
             end
           end
         end
@@ -87,7 +87,7 @@ if binary
         volume_ports.each do |vol, ports|
           Facter.add("gluster_volume_#{vol}_ports".to_sym) do
             setcode do
-              ports.join(',')
+              ports
             end
           end
         end
