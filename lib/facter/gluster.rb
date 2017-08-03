@@ -29,20 +29,18 @@ if binary
   peer_status = REXML::Document.new(Facter::Util::Resolution.exec("#{binary} peer status --xml"))
   peers = REXML::XPath.match(peer_status, '/cliOutput/peerStatus/peer/hostname/text()')
   peer_count = peers.size
-  if peer_count > 0
-    peer_list = peers
-    volumes = REXML::Document.new(Facter::Util::Resolution.exec("#{binary} volume info --xml"))
-    REXML::XPath.match(volumes, '/cliOutput/volInfo/volumes/volume').each do |vol|
-      vol_name = vol.elements['name'].text
-      vol_status = vol.elements['statusStr'].text
-      bricks = REXML::XPath.match(vol, 'bricks/brick/name/text()')
-      volume_bricks[vol_name] = bricks
-      options = REXML::XPath.match(vol, 'options/option').map { |option| "#{option.elements['name'].text}: #{option.elements['value'].text}" }
-      volume_options[vol_name] = options if options
-      next unless vol_status == 'Started'
-      status = REXML::Document.new(Facter::Util::Resolution.exec("#{binary} volume status #{vol_name} --xml"))
-      volume_ports[vol_name] = REXML::XPath.match(status, "/cliOutput/volStatus/volumes/volume/node[starts-with(hostname/text(), '#{Facter.value('hostname')}')]/port/text()")
-    end
+  peer_list = peers
+  volumes = REXML::Document.new(Facter::Util::Resolution.exec("#{binary} volume info --xml"))
+  REXML::XPath.match(volumes, '/cliOutput/volInfo/volumes/volume').each do |vol|
+    vol_name = vol.elements['name'].text
+    vol_status = vol.elements['statusStr'].text
+    bricks = REXML::XPath.match(vol, 'bricks/brick/name/text()')
+    volume_bricks[vol_name] = bricks
+    options = REXML::XPath.match(vol, 'options/option').map { |option| "#{option.elements['name'].text}: #{option.elements['value'].text}" }
+    volume_options[vol_name] = options if options
+    next unless vol_status == 'Started'
+    status = REXML::Document.new(Facter::Util::Resolution.exec("#{binary} volume status #{vol_name} --xml"))
+    volume_ports[vol_name] = REXML::XPath.match(status, "/cliOutput/volStatus/volumes/volume/node[starts-with(hostname/text(), '#{Facter.value('hostname')}')]/port/text()")
   end
 
   # Gluster facts don't make sense if the Gluster binary isn't present
@@ -59,36 +57,36 @@ if binary
         peer_list.sort
       end
     end
+  end
 
-    unless volume_bricks.empty?
-      Facter.add(:gluster_volume_list) do
+  unless volume_bricks.empty?
+    Facter.add(:gluster_volume_list) do
+      setcode do
+        volume_bricks.keys.sort
+      end
+    end
+    volume_bricks.each do |vol, bricks|
+      Facter.add("gluster_volume_#{vol}_bricks".to_sym) do
         setcode do
-          volume_bricks.keys.sort
+          bricks.sort
         end
       end
-      volume_bricks.each do |vol, bricks|
-        Facter.add("gluster_volume_#{vol}_bricks".to_sym) do
+    end
+    # rubocop:disable Metrics/BlockNesting
+    if volume_options
+      volume_options.each do |vol, opts|
+        Facter.add("gluster_volume_#{vol}_options".to_sym) do
           setcode do
-            bricks.sort
+            opts.sort
           end
         end
       end
-      # rubocop:disable Metrics/BlockNesting
-      if volume_options
-        volume_options.each do |vol, opts|
-          Facter.add("gluster_volume_#{vol}_options".to_sym) do
-            setcode do
-              opts.sort
-            end
-          end
-        end
-      end
-      if volume_ports
-        volume_ports.each do |vol, ports|
-          Facter.add("gluster_volume_#{vol}_ports".to_sym) do
-            setcode do
-              ports.sort
-            end
+    end
+    if volume_ports
+      volume_ports.each do |vol, ports|
+        Facter.add("gluster_volume_#{vol}_ports".to_sym) do
+          setcode do
+            ports.sort
           end
         end
       end
